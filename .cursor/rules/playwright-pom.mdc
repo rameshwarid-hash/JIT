@@ -1,0 +1,22 @@
+---
+description: Page Object Model conventions for pages/
+globs: pages/**/*.js
+alwaysApply: false
+---
+
+# Page Objects
+
+- One class per page/screen; export class; constructor stores `page`.
+- Locators in constructor: prefer `getByRole` / accessible names over CSS/XPath.
+- Actions are methods; assertions use Playwright `expect` on locators.
+- **No credentials** in page objects — callers pass data from `test-data/` / fixtures.
+- Reuse existing page methods; do not duplicate login or master-create flows in new pages.
+- Keep methods focused (fill, submit, search, cancel); avoid giant god-methods unless matching `e2eWorkflow` helpers.
+
+```js
+// Prefer
+this.nameInput = page.getByRole('textbox', { name: 'Client Name' });
+
+// Avoid brittle selectors unless no accessible name exists
+this.nameInput = page.locator('#client-name-xyz');
+```

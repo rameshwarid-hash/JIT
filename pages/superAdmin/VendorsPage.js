@@ -125,8 +125,14 @@ export class VendorsPage {
     await this.submitButton.click();
   }
 
-  async cancelAddVendor() {
-    await this.cancelButton.click();
-    await expect(this.dialog).toBeHidden();
+  /**
+   * Create a vendor (dialog closes on success).
+   * @param {{ name: string, email?: string, phone?: string, address?: string, notes?: string }} data
+   */
+  async createVendor(data) {
+    await this.openAddVendor();
+    await this.fillVendorForm(data);
+    await this.submitAddVendor();
+    await expect(this.dialog).toBeHidden({ timeout: 15_000 });
   }
 }

@@ -9,3 +9,4 @@ node_modules/
 .env
 .env.*
 !.env.example
+test-data/e2e/lastWorkflow.json

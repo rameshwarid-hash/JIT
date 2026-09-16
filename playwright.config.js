@@ -66,10 +66,10 @@ export default defineConfig({
     /**
      * WHY baseURL:
      * Lets tests write: page.goto('/login')
-     * instead of the full staging URL every time.
-     * If the staging host changes, you update it in ONE place.
+     * instead of the full URL every time.
+     * Override for local: BASE_URL=http://localhost:3000 npm test
      */
-    baseURL: 'https://staging.d1u0ld8155t0io.amplifyapp.com',
+    baseURL: process.env.BASE_URL || 'https://staging.d1u0ld8155t0io.amplifyapp.com',
 
     /**
      * WHY screenshot / video / trace:
@@ -113,5 +113,5 @@ export default defineConfig({
     // },
   ],
 
-  // No local webServer — we test against staging, not localhost.
+  // App is started separately (staging or local). Set BASE_URL for localhost.
 });

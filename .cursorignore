@@ -1,0 +1,46 @@
+# Dependencies & lockfile noise
+node_modules/
+package-lock.json
+
+# Playwright / test artifacts (large, regenerated)
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+playwright/.auth/
+screenshots/
+reports/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Large Excel TC packs (open via @ only if needed)
+*.xlsx
+*.xls
+
+# Binary / media fixtures
+**/*.pdf
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.webp
+**/*.mp4
+**/*.webm
+**/*.zip
+
+# Generated / ephemeral workflow state
+test-data/e2e/lastWorkflow.json
+
+# Docs: ignore bulk QA markdown (~2.7k lines). Keep only the short index.
+# Agent/user can still @-mention a specific doc when needed.
+docs/**
+!docs/README.md
+
+# Misc junk
+**/Untitled
+**/*.log
+.DS_Store
+Thumbs.db

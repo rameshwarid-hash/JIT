@@ -110,11 +110,11 @@ export class LoginPage {
   }
 
   /**
-   * Happy-path helper: fill credentials and submit.
+   * Happy-path helper: fill credentials, submit, and wait until auth completes.
    *
-   * WHY one method for the full flow:
-   * Most tests only need "log in as X". Keeping fill+click together avoids
-   * repeating 3 lines in every test. For negative tests, call fill/click separately.
+   * Staging stores JWT in sessionStorage (ji_access_token / ji_refresh_token),
+   * not cookies. We must wait for POST /api/auth/login + tokens before any
+   * redirect assertion — otherwise expectLoginSuccess can race and still see /login.
    *
    * @param {string} email
    * @param {string} password
@@ -122,27 +122,86 @@ export class LoginPage {
   async login(email, password) {
     await this.fillEmail(email);
     await this.fillPassword(password);
+
+    const responsePromise = this.page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/auth/login') &&
+        res.request().method() === 'POST',
+      { timeout: 30_000 },
+    );
+
     await this.clickSignIn();
+    const response = await responsePromise;
+
+    let bodyText = '';
+    try {
+      bodyText = await response.text();
+    } catch (err) {
+      throw new Error(
+        `Login API body unavailable (${response.status()}): ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+
+    if (response.status() !== 200) {
+      throw new Error(
+        `Login API failed with HTTP ${response.status()}: ${bodyText.slice(0, 300)}`,
+      );
+    }
+
+    /** @type {{ success?: boolean, message?: string, data?: { accessToken?: string } }} */
+    let payload;
+    try {
+      payload = JSON.parse(bodyText);
+    } catch {
+      throw new Error(`Login API returned non-JSON body: ${bodyText.slice(0, 300)}`);
+    }
+
+    if (!payload.success) {
+      throw new Error(
+        `Login API success=false: ${payload.message || bodyText.slice(0, 300)}`,
+      );
+    }
+
+    // Auth is complete only once the SPA has stored the access token.
+    await expect
+      .poll(
+        async () =>
+          this.page.evaluate(() => sessionStorage.getItem('ji_access_token')),
+        {
+          timeout: 15_000,
+          message: 'ji_access_token was not written to sessionStorage after login',
+        },
+      )
+      .toBeTruthy();
   }
 
   /**
-   * Assert login succeeded.
+   * Assert login succeeded (redirect + session token).
    *
-   * WHY this design:
-   * Different roles land on different home URLs
-   * (e.g. Super Admin -> /super-admin/dashboard).
-   * Pass `urlIncludes` when you know the expected path.
-   * If unknown, we still assert we left /login.
+   * Call after login() so the API/token wait has already finished.
+   * Still waits for navigation — redirect can lag slightly behind storage.
    *
    * @param {{ urlIncludes?: string | RegExp }} [options]
    */
   async expectLoginSuccess(options = {}) {
-    // Minimum success signal: we are no longer on the sign-in page
-    await expect(this.page).not.toHaveURL(/\/login/);
+    await expect(this.page).not.toHaveURL(/\/login/, { timeout: 30_000 });
 
     if (options.urlIncludes) {
-      await expect(this.page).toHaveURL(options.urlIncludes);
+      const pattern =
+        typeof options.urlIncludes === 'string'
+          ? new RegExp(
+              options.urlIncludes.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+            )
+          : options.urlIncludes;
+      await expect(this.page).toHaveURL(pattern, { timeout: 30_000 });
     }
+
+    const accessToken = await this.page.evaluate(() =>
+      sessionStorage.getItem('ji_access_token'),
+    );
+    expect(accessToken, 'session must keep ji_access_token after redirect').toBeTruthy();
   }
 
   /**
@@ -168,6 +227,38 @@ export class LoginPage {
     if (message) {
       await expect(this.alert).toContainText(message);
     }
-    // TODO: Confirm exact invalid-login error text on staging and tighten this assertion.
+  }
+
+  /**
+   * End session for role-switch E2E flows.
+   * Prefers UI logout; always clears SPA JWT storage (sessionStorage).
+   */
+  async logout() {
+    const profile = this.page
+      .getByRole('complementary')
+      .getByRole('button')
+      .filter({ hasText: /@/ });
+
+    if (await profile.first().isVisible().catch(() => false)) {
+      await profile.first().click();
+      const logoutItem = this.page
+        .getByRole('menuitem', { name: /Log out|Sign out|Logout/i })
+        .or(this.page.getByRole('button', { name: /Log out|Sign out|Logout/i }))
+        .or(this.page.getByText(/Log out|Sign out/i));
+      if (await logoutItem.first().isVisible().catch(() => false)) {
+        await logoutItem.first().click();
+      }
+    }
+
+    await this.page.evaluate(() => {
+      sessionStorage.clear();
+      localStorage.clear();
+    });
+    await this.page.goto('/login');
+    await this.expectLoaded();
+    const token = await this.page.evaluate(() =>
+      sessionStorage.getItem('ji_access_token'),
+    );
+    expect(token, 'access token must be cleared after logout').toBeFalsy();
   }
 }

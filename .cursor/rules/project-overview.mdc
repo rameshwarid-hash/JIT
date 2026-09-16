@@ -1,0 +1,42 @@
+---
+description: JIT Playwright repo map, roles, and token-efficient defaults
+alwaysApply: true
+---
+
+# JIT QA Automation
+
+Playwright ESM (`"type": "module"`) suite for **Project Activity Reporting System**.
+
+## Layout
+
+- `pages/` — Page Objects by role (`superAdmin/`, `projectManager/`, `fieldResource/`) + `LoginPage.js`
+- `tests/` — specs (`superAdmin/`, `e2e/`, `login.spec.js`)
+- `fixtures/auth.fixture.js` — `loginAs` / `logout` (import `test`/`expect` from here when auth needed)
+- `test-data/` — `users.js`, masters, e2e fixtures (no credentials in page objects)
+- `utils/` — shared helpers (`e2eState`, `e2eWorkflow`, `network`, `uniqueData`)
+- `docs/README.md` — QA docs index only (other docs are cursorignored)
+
+## Roles
+
+Super Admin, Project Manager, Field Resource. Env: `SUPER_ADMIN_*`, `ADMIN_*`→PM, `EMPLOYEE_*`→FR.
+
+## Docs — open only when needed (do not bulk-load)
+
+| Need | File |
+|------|------|
+| Index | `docs/README.md` |
+| App/domain overview | `docs/PROJECT_ANALYSIS.md` |
+| Permissions by role | `docs/ROLE_MATRIX.md` |
+| Business invariants | `docs/BUSINESS_RULES.md` |
+| What/how to test | `docs/TEST_STRATEGY.md` |
+| Known defect patterns | `docs/BUG_PATTERNS.md` |
+| Manual TC packs | `docs/test-cases/*.md` (one file) |
+| Framework gaps / structure | `docs/framework/*` |
+| Exploratory catalog | `docs/EXPLORATORY_BUG_CATALOG.md` (large — last resort) |
+
+## Token / context rules
+
+- Prefer the specific page/spec/util being edited — never preload all of `docs/`.
+- Open **one** doc at a time via `@` / Read when the task needs domain or TC context.
+- Never commit `.env`, credentials, or `lastWorkflow.json`.
+- Match existing style: `// @ts-check`, short file header comments, role-based locators.

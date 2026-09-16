@@ -1,0 +1,23 @@
+---
+description: Spec and fixture conventions for tests/, fixtures/, utils/
+globs: "{tests,fixtures,utils,test-data}/**/*.{js,mjs}"
+alwaysApply: false
+---
+
+# Specs & fixtures
+
+- Auth flows: `import { test, expect } from '../../fixtures/auth.fixture.js'` then `await loginAs(users.superAdmin)`.
+- Users from `test-data/users.js` only — never hardcode passwords in specs.
+- Arrange → Act → Assert; keep specs thin; put UI steps in page objects / `utils/e2eWorkflow.js`.
+- Multi-step E2E: use `e2eState` persistence; serial mode + higher timeout when dependent.
+- Prefer stable assertions (URL, role headings, API-backed checks via `utils/network.js`) over sleep.
+- Do not add `test.only` / `test.skip` without reason; `forbidOnly` is on in CI.
+
+```js
+test('SA can open Clients', async ({ page, loginAs }) => {
+  await loginAs(users.superAdmin);
+  const clients = new ClientsPage(page);
+  await clients.goto();
+  await clients.expectLoaded();
+});
+```

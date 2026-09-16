@@ -1,0 +1,38 @@
+{
+  "name": "playwright-framework",
+  "version": "1.0.0",
+  "description": "Enterprise Playwright JavaScript test automation framework",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:qa": "cross-env TEST_ENV=qa playwright test",
+    "test:staging": "cross-env TEST_ENV=staging playwright test",
+    "report": "playwright show-report reports/html",
+    "allure:generate": "allure generate reports/allure-results --clean -o reports/allure-report",
+    "allure:open": "allure open reports/allure-report",
+    "allure:report": "npm run allure:generate && npm run allure:open",
+    "browsers": "playwright install --with-deps",
+    "docker:build": "docker build -f docker/Dockerfile -t playwright-framework:local .",
+    "docker:smoke": "docker compose -f docker/docker-compose.yml run --rm playwright"
+  },
+  "keywords": [
+    "playwright",
+    "automation",
+    "e2e",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.62.0",
+    "@types/node": "^26.1.2",
+    "allure-commandline": "^2.43.0",
+    "allure-playwright": "^3.10.2",
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.4.2"
+  }
+}

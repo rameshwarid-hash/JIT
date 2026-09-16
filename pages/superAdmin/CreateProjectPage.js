@@ -88,4 +88,54 @@ export class CreateProjectPage {
     await expect(this.main.getByText(/^Client/i).first()).toBeVisible();
     await expect(this.main.getByText(/^Vendor/i).first()).toBeVisible();
   }
+
+  /** @param {string} clientName */
+  async selectClient(clientName) {
+    await this.main.getByRole('combobox').filter({ hasText: /Select client|client/i }).click();
+    await this.page.getByRole('option', { name: new RegExp(clientName, 'i') }).first().click();
+  }
+
+  /** @param {string} vendorName */
+  async selectVendor(vendorName) {
+    await this.main.getByRole('combobox').filter({ hasText: /Select vendor|vendor/i }).click();
+    await this.page.getByRole('option', { name: new RegExp(vendorName, 'i') }).first().click();
+  }
+
+  /** @param {string} managerName */
+  async assignProjectManager(managerName) {
+    const search = this.main.getByPlaceholder('Search project managers');
+    await search.fill(managerName);
+    await this.main.locator('label').filter({ hasText: managerName }).first().click();
+    await expect(this.main.getByText(/[1-9]\d* managers? selected/i)).toBeVisible();
+  }
+
+  /** @param {string} memberName */
+  async assignFieldResource(memberName) {
+    const search = this.main.getByPlaceholder('Search team members');
+    await search.fill(memberName);
+    const label = this.main.locator('label').filter({ hasText: memberName }).first();
+    await expect(label).toBeVisible();
+    await label.click();
+  }
+
+  /**
+   * Publish project via Create and leave the create route.
+   */
+  async publishProject() {
+    const responsePromise = this.page.waitForResponse((res) => {
+      if (res.request().method() !== 'POST') return false;
+      try {
+        return new URL(res.url()).pathname.replace(/\/$/, '') === '/api/projects';
+      } catch {
+        return false;
+      }
+    }, { timeout: 30_000 });
+
+    await this.clickCreate();
+    const response = await responsePromise;
+    expect([200, 201], `create project status ${response.status()}`).toContain(
+      response.status(),
+    );
+    await expect(this.page).not.toHaveURL(/\/projects\/create/, { timeout: 30_000 });
+  }
 }

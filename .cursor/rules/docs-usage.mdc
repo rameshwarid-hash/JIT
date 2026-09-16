@@ -1,0 +1,15 @@
+---
+description: How to use docs/ without loading the whole QA pack
+globs: docs/**/*.md
+alwaysApply: false
+---
+
+# Docs usage
+
+`docs/` is reference material for QA analysis — not source of truth for automation code.
+
+- Start from `docs/README.md`; open sibling files only for the active question.
+- When writing/updating tests: map to **one** `docs/test-cases/<area>.md`, then implement via existing page objects.
+- Prefer `BUG_PATTERNS.md` / `BUSINESS_RULES.md` over the full exploratory catalog.
+- Do not paste large doc sections into code comments; link the path instead.
+- Automation code lives in `pages/`, `tests/`, `fixtures/`, `utils/` — docs do not replace those.

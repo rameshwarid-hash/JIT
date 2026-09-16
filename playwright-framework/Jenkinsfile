@@ -1,0 +1,124 @@
+// Jenkinsfile
+// ----------
+// Declarative Pipeline for Playwright smoke (Chromium + @smoke).
+// Configure credential IDs in Jenkins to match the withCredentials block.
+//
+// Suggested Jenkins setup:
+// - Agent with Node.js LTS (or use a Docker agent in a later step)
+// - Plugins: Pipeline, Credentials Binding, Allure, HTML Publisher (optional)
+// - Secret text credentials:
+//     PW_BASE_URL (required)
+//     PW_API_BASE_URL, PW_ADMIN_EMAIL, PW_ADMIN_PASSWORD,
+//     PW_USER_EMAIL, PW_USER_PASSWORD (optional for pure UI smoke)
+
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+    timeout(time: 60, unit: 'MINUTES')
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+  }
+
+  parameters {
+    choice(
+      name: 'TEST_ENV',
+      choices: ['qa', 'staging', 'local', 'production'],
+      description: 'Which .env.* file / environment to target'
+    )
+    string(
+      name: 'GREP',
+      defaultValue: '@smoke',
+      description: 'Playwright --grep pattern'
+    )
+    string(
+      name: 'PROJECT',
+      defaultValue: 'chromium',
+      description: 'Playwright project name'
+    )
+  }
+
+  environment {
+    CI = 'true'
+    TEST_ENV = "${params.TEST_ENV}"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Install dependencies') {
+      steps {
+        // If the Git repo root is a monorepo parent, wrap with:
+        // dir('playwright-framework') { ... }
+        sh 'node -v'
+        sh 'npm ci'
+        sh 'npx playwright install chromium --with-deps'
+      }
+    }
+
+    stage('Prepare env file') {
+      steps {
+        withCredentials([
+          string(credentialsId: 'PW_BASE_URL', variable: 'BASE_URL'),
+          string(credentialsId: 'PW_API_BASE_URL', variable: 'API_BASE_URL'),
+          string(credentialsId: 'PW_ADMIN_EMAIL', variable: 'ADMIN_EMAIL'),
+          string(credentialsId: 'PW_ADMIN_PASSWORD', variable: 'ADMIN_PASSWORD'),
+          string(credentialsId: 'PW_USER_EMAIL', variable: 'USER_EMAIL'),
+          string(credentialsId: 'PW_USER_PASSWORD', variable: 'USER_PASSWORD')
+        ]) {
+          sh '''
+            set -e
+            if [ -z "${BASE_URL}" ]; then
+              echo "BASE_URL credential PW_BASE_URL is empty"
+              exit 1
+            fi
+
+            FILE=".env.${TEST_ENV}"
+            if [ "${TEST_ENV}" = "local" ]; then FILE=".env"; fi
+
+            {
+              echo "BASE_URL=${BASE_URL}"
+              echo "API_BASE_URL=${API_BASE_URL}"
+              echo "IGNORE_HTTPS_ERRORS=false"
+              echo "ADMIN_EMAIL=${ADMIN_EMAIL}"
+              echo "ADMIN_PASSWORD=${ADMIN_PASSWORD}"
+              echo "USER_EMAIL=${USER_EMAIL}"
+              echo "USER_PASSWORD=${USER_PASSWORD}"
+            } > "${FILE}"
+
+            echo "Wrote ${FILE} for TEST_ENV=${TEST_ENV}"
+          '''
+        }
+      }
+    }
+
+    stage('Test') {
+      steps {
+        sh '''
+          set -e
+          npx playwright test --project="${PROJECT}" --grep "${GREP}"
+        '''
+      }
+    }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: 'reports/html/**', allowEmptyArchive: true, fingerprint: true
+      archiveArtifacts artifacts: 'reports/allure-results/**', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'test-results/**', allowEmptyArchive: true
+
+      // Enable when the Allure Jenkins plugin is installed:
+      // allure([
+      //   includeProperties: false,
+      //   jdk: '',
+      //   results: [[path: 'reports/allure-results']]
+      // ])
+    }
+  }
+}

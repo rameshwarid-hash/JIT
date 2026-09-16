@@ -54,7 +54,11 @@ export const test = base.extend({
      */
     const loginAs = async (user) => {
       const loginPage = new LoginPage(page);
+
+      // Fresh UI login each test — no storageState / shared session reuse.
+      // Staging auth is sessionStorage JWT (ji_access_token), not cookies.
       await loginPage.goto();
+      await loginPage.expectLoaded();
       await loginPage.login(user.email, user.password);
       await loginPage.expectLoginSuccess(
         user.homePath ? { urlIncludes: user.homePath } : {},
@@ -63,6 +67,17 @@ export const test = base.extend({
     };
 
     await use(loginAs);
+  },
+
+  /**
+   * logout() — clears SPA session and returns to /login (for multi-role E2E).
+   */
+  logout: async ({ page }, use) => {
+    const logout = async () => {
+      const loginPage = new LoginPage(page);
+      await loginPage.logout();
+    };
+    await use(logout);
   },
 });
 

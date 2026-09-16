@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Environment files (secrets) — commit .env.example only
+.env
+.env.qa
+.env.staging
+.env.production
+.env.local
+.env.*.local
+!.env.example
+
+# Playwright / framework outputs (keep folder placeholders)
+reports/html/**
+!reports/html/.gitkeep
+reports/allure-results/**
+!reports/allure-results/.gitkeep
+reports/allure-report/**
+!reports/allure-report/.gitkeep
+screenshots/**
+!screenshots/.gitkeep
+!screenshots/README.md
+videos/**
+!videos/.gitkeep
+traces/**
+!traces/.gitkeep
+test-results/
+blob-report/
+playwright/.cache/
+auth-state/
+*.trace.zip
+
+# Logs & OS
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo

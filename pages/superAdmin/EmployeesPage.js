@@ -137,8 +137,31 @@ export class EmployeesPage {
     await this.submitButton.click();
   }
 
-  async cancelAddEmployee() {
-    await this.cancelButton.click();
-    await expect(this.dialog).toBeHidden();
+  /**
+   * @param {'Super Administrator' | 'Project Manager' | 'Field Resource'} roleLabel
+   */
+  async selectEmployeeRole(roleLabel) {
+    await this.dialog.getByRole('combobox').first().click();
+    await this.page.getByRole('option', { name: roleLabel, exact: true }).click();
+  }
+
+  /**
+   * Create an employee and wait for the dialog to close.
+   * @param {{
+   *   firstName: string,
+   *   lastName: string,
+   *   email: string,
+   *   password: string,
+   *   role: 'Super Administrator' | 'Project Manager' | 'Field Resource',
+   *   phone?: string,
+   *   location?: string,
+   * }} data
+   */
+  async createEmployee(data) {
+    await this.openAddEmployee();
+    await this.selectEmployeeRole(data.role);
+    await this.fillEmployeeForm(data);
+    await this.submitAddEmployee();
+    await expect(this.dialog).toBeHidden({ timeout: 20_000 });
   }
 }

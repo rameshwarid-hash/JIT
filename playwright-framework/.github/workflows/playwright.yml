@@ -1,0 +1,105 @@
+# .github/workflows/playwright.yml
+# --------------------------------
+# PR + main smoke gate (Chromium only — fast feedback).
+# Nightly/full matrix can be a second workflow later.
+#
+# Required GitHub Secrets (Settings → Secrets and variables → Actions):
+#   BASE_URL, API_BASE_URL (optional), ADMIN_EMAIL, ADMIN_PASSWORD,
+#   USER_EMAIL, USER_PASSWORD
+# Optional variable: TEST_ENV (defaults to qa)
+
+name: Playwright Smoke
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: playwright-smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    env:
+      CI: true
+      TEST_ENV: ${{ vars.TEST_ENV || 'qa' }}
+      BASE_URL: ${{ secrets.BASE_URL }}
+      API_BASE_URL: ${{ secrets.API_BASE_URL }}
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      USER_EMAIL: ${{ secrets.USER_EMAIL }}
+      USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
+      IGNORE_HTTPS_ERRORS: ${{ vars.IGNORE_HTTPS_ERRORS || 'false' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Verify required secrets
+        run: |
+          if [ -z "$BASE_URL" ]; then
+            echo "Missing secret BASE_URL. Add it under repo Actions secrets."
+            exit 1
+          fi
+
+      - name: Write env file for TEST_ENV
+        run: |
+          # config/env.config.js loads .env.qa when TEST_ENV=qa (etc.)
+          FILE=".env.${TEST_ENV}"
+          if [ "$TEST_ENV" = "local" ]; then FILE=".env"; fi
+          {
+            echo "BASE_URL=${BASE_URL}"
+            echo "API_BASE_URL=${API_BASE_URL}"
+            echo "IGNORE_HTTPS_ERRORS=${IGNORE_HTTPS_ERRORS}"
+            echo "ADMIN_EMAIL=${ADMIN_EMAIL}"
+            echo "ADMIN_PASSWORD=${ADMIN_PASSWORD}"
+            echo "USER_EMAIL=${USER_EMAIL}"
+            echo "USER_PASSWORD=${USER_PASSWORD}"
+          } > "$FILE"
+          echo "Wrote $FILE for TEST_ENV=$TEST_ENV"
+
+      - name: Run smoke tests (Chromium)
+        run: npx playwright test --project=chromium --grep @smoke
+
+      - name: Upload Playwright HTML report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-html-report
+          path: reports/html/
+          retention-days: 14
+
+      - name: Upload Allure results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: reports/allure-results/
+          retention-days: 14
+
+      - name: Upload test-results (traces / videos / screenshots)
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore

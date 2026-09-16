@@ -1,0 +1,29 @@
+# .dockerignore — keep build context small and avoid copying secrets/artifacts
+node_modules
+npm-debug.log*
+.git
+.github
+.idea
+.vscode
+
+# Secrets must be injected at runtime (Compose env / -e / CI secrets)
+.env
+.env.*
+!.env.example
+
+# Generated outputs
+reports
+test-results
+screenshots
+videos
+traces
+blob-report
+playwright-report
+playwright/.cache
+auth-state
+
+# Local docs binaries / noise
+*.xlsx
+*.md
+!screenshots/README.md
+docker/docker-compose.yml
